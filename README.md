@@ -2,7 +2,7 @@
 
 
 # Báo cáo Thực hành Cyber Fortress - Đề tài CF10
-**Học phần:** FIT4012 - Nhập môn An toàn bảo mật thông tin (Đại học FPT)
+**Học phần:** FIT4012 - Nhập môn An toàn bảo mật thông tin
 **Chủ đề:** File Upload Vulnerability
 
 ## 1. Hướng dẫn cài đặt và chạy Demo
