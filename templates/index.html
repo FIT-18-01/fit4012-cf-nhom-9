@@ -371,7 +371,7 @@
             logBox.scrollTop = logBox.scrollHeight; // Tự động cuộn xuống cuối
         }
 
-        // 3. Hàm gửi File bằng Fetch API (Không cần iframe)
+        // 3. Hàm gửi File bằng Fetch API và bóc tách dữ liệu JSON báo cáo chi tiết
         async function submitFile(formId, url, resultId, sysType) {
             const form = document.getElementById(formId);
             const fileInput = form.querySelector('input[type="file"]');
@@ -383,52 +383,79 @@
             }
 
             const fileName = fileInput.files[0].name;
-            const fileSize = (fileInput.files[0].size / 1024).toFixed(2); // KB
+            const fileSize = (fileInput.files[0].size / 1024).toFixed(2);
 
-            writeLog(`Đang gửi yêu cầu POST file [${fileName} - ${fileSize} KB] tới endpoint: ${url}`, "info");
+            writeLog(`Đang gửi yêu cầu POST file [${fileName}] tới endpoint: ${url}`, "info");
 
             // Hiện trạng thái đang xử lý
             resultBox.style.display = 'block';
             resultBox.className = 'result-box';
             resultBox.style.backgroundColor = '#e9ecef';
             resultBox.style.color = '#333';
-            resultBox.innerHTML = '⏳ Đang xử lý...';
+            resultBox.innerHTML = '⏳ Đang phân tích gói tin...';
 
             const formData = new FormData(form);
 
             try {
-                // Gửi request ngầm xuống Python Server
-                const response = await fetch(url, {
-                    method: 'POST',
-                    body: formData
-                });
+                const response = await fetch(url, { method: 'POST', body: formData });
+                const data = await response.json();
 
-                const responseText = await response.text();
-
-                // Xử lý hiển thị kết quả dựa vào HTTP Status Code
-                if (response.ok) {
-                    // Code 200 OK
-                    resultBox.className = 'result-box result-success';
-                    if (sysType === 'vuln') {
-                        resultBox.className = 'result-box result-error'; // Màu đỏ vì upload lỗi thành công
-                        writeLog(`[CẢNH BÁO MẠNG] Server đã bị xâm nhập! File được lưu trái phép.`, "error");
-                    } else {
-                        writeLog(`[AN TOÀN] File lưu thành công. Mã hóa UUID hoạt động.`, "success");
-                    }
-                    resultBox.innerHTML = responseText;
+                // Cài đặt màu sắc theo Status
+                let titleColor = "#333";
+                if (data.status === "danger") {
+                    resultBox.className = 'result-box result-error'; // Đỏ (Bị hack)
+                    titleColor = "#721c24";
+                    writeLog(`[CẢNH BÁO] Hacker đã lọt vào máy chủ!`, "error");
+                } else if (data.status === "blocked") {
+                    resultBox.className = 'result-box result-success'; // Xanh (Chặn thành công)
+                    titleColor = "#155724";
+                    writeLog(`[PHÒNG THỦ THÀNH CÔNG] File độc hại bị chặn đứng.`, "success");
                 } else {
-                    // Code 400, 403 (Bị chặn)
-                    resultBox.className = 'result-box result-error';
-                    if (sysType === 'secure') {
-                        resultBox.className = 'result-box result-success'; // Màu xanh vì đã chặn được Hacker
-                        writeLog(`[PHÒNG THỦ THÀNH CÔNG] Hacker bị chặn (Mã lỗi: ${response.status}).`, "success");
-                    }
-                    resultBox.innerHTML = `<b>Mã lỗi HTTP ${response.status}:</b><br>` + responseText;
+                    resultBox.className = 'result-box result-success'; // Xanh (Up ảnh an toàn)
+                    titleColor = "#155724";
+                    writeLog(`[AN TOÀN] File được tải lên và khử độc tên file thành công.`, "success");
                 }
+
+                // TẠO DANH SÁCH LỖI (1, 2, 3...)
+                let reasonsHtml = '';
+                if (data.reasons && data.reasons.length > 0) {
+                    let textTitle = data.status === "success" ? "🛡️ Chi tiết phòng thủ:" : "🚨 Các vấn đề / lỗi phát hiện:";
+                    let textColor = data.status === "success" ? "#155724" : "#d32f2f";
+
+                    reasonsHtml = `<div style="color: ${textColor}; margin-bottom: 12px; font-size: 14px;"><b>${textTitle}</b><br>`;
+                    data.reasons.forEach((r, index) => {
+                        reasonsHtml += `<span style="margin-left: 10px;"><b>${index + 1}.</b> ${r}</span><br>`;
+                    });
+                    reasonsHtml += `</div>`;
+                }
+
+                // TẠO THÔNG TIN FILE BÊN DƯỚI
+                let fileInfoHtml = '';
+                if (data.file_info) {
+                    fileInfoHtml = `
+                        <div style="background: rgba(255,255,255,0.7); padding: 12px; border-radius: 6px; font-size: 13.5px; border: 1px dashed #aaa; box-shadow: inset 0 0 5px rgba(0,0,0,0.05);">
+                            <b style="color: #333; display: inline-block; margin-bottom: 8px;">📁 Thông tin File của bạn:</b>
+                            <ul style="margin: 0; padding-left: 20px; color: #444; list-style-type: square; line-height: 1.8;">
+                                <li><b>Tên file:</b> <code>${data.file_info.name}</code></li>
+                                <li><b>MIME Type:</b> <code>${data.file_info.mime_type}</code></li>
+                                <li><b>Kích thước:</b> <code>${data.file_info.size}</code></li>
+                                ${data.file_info.saved_as ? `<li><b>Lưu trên Server:</b> <code style="color:#d32f2f;">${data.file_info.saved_as}</code></li>` : `<li><b>Trạng thái hệ thống:</b> <span style="color:#d32f2f; font-weight:bold;">Đã hủy gói tin, chặn lưu trữ</span></li>`}
+                            </ul>
+                        </div>
+                    `;
+                }
+
+                // Ghép nối HTML
+                resultBox.innerHTML = `
+                    <div style="font-size: 16px; margin-bottom: 5px; color: ${titleColor};"><b>${data.title}</b></div>
+                    <div style="margin-bottom: 15px; font-weight: normal;">${data.msg}</div>
+                    ${reasonsHtml}
+                    ${fileInfoHtml}
+                `;
 
             } catch (error) {
                 resultBox.className = 'result-box result-error';
-                resultBox.innerHTML = "❌ Lỗi mạng: Không thể kết nối tới Server. Hãy đảm bảo app.py đang chạy.";
+                resultBox.innerHTML = "❌ Lỗi mạng: Không thể đọc được phản hồi từ Server.";
                 writeLog(`[LỖI HỆ THỐNG] ${error.message}`, "error");
             }
         }
