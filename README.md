@@ -24,6 +24,8 @@
 
 </div>
 
+**Giảng Viên - ThS. Lê Thị Thùy Trang**
+
 **Học phần:** FIT4012 - Nhập môn An toàn bảo mật thông tin
 **Chủ đề:** File Upload Vulnerability
 
