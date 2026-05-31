@@ -34,103 +34,133 @@ def get_file_size(file_stream):
     file_stream.seek(0)
     return size
 
+# ==========================================
+# 🛠️ HÀM MỚI: TỰ ĐỘNG ĐỊNH DẠNG DUNG LƯỢNG
+# ==========================================
+def format_size(size_in_bytes):
+    if size_in_bytes >= 1024 * 1024:
+        return f"{size_in_bytes / (1024 * 1024):.2f} MB"
+    elif size_in_bytes >= 1024:
+        return f"{size_in_bytes / 1024:.2f} KB"
+    else:
+        return f"{size_in_bytes} Bytes"
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
 # ==========================================
-# 🚨 LUỒNG 1: VULNERABLE (Bản lỗi)
+# 🚨 LUỒNG 1: VULNERABLE (HỆ THỐNG LỖI)
 # ==========================================
 @app.route('/upload_vuln', methods=['POST'])
 def upload_vuln():
-    if 'file' not in request.files:
-        return jsonify({"title": "Lỗi", "msg": "Không tìm thấy file"}), 400
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"title": "Lỗi", "msg": "Chưa chọn file"}), 400
+    files = request.files.getlist('file')
+    if not files or files[0].filename == '':
+        return jsonify({"error": "Chưa chọn file nào!"}), 400
     
-    file_size = get_file_size(file)
-    filename = file.filename
-    filepath = os.path.join(UPLOAD_VULN, filename)
-    file.save(filepath)
-    
-    return jsonify({
-        "status": "danger",
-        "title": "❌ CẢNH BÁO: MÁY CHỦ BỊ XÂM NHẬP!",
-        "msg": "Hệ thống Lỗi đã tiếp nhận file thành công (Rất nguy hiểm).",
-        "reasons": [
-            "Lỗi hệ thống: Không có lớp kiểm tra giới hạn dung lượng.",
-            "Lỗi hệ thống: Không có danh sách Whitelist để lọc đuôi file.",
-            "Lỗi hệ thống: Bỏ qua bước kiểm tra chữ ký/cấu trúc Byte (Header) của file."
-        ],
-        "file_info": {
-            "name": filename,
-            "mime_type": file.mimetype,
-            "size": f"{file_size / 1024:.2f} KB",
-            "saved_as": filepath
-        }
-    }), 200
+    results = []
+    for file in files:
+        if file.filename == '': continue
+        
+        filename = file.filename
+        file_size = get_file_size(file)
+        filepath = os.path.join(UPLOAD_VULN, filename)
+        file.save(filepath)
+        
+        trace_log = [
+            f"⚠️ Bước 1: Tiếp nhận file '{filename}'.",
+            f"🚨 Bước 2: LƯU TRỰC TIẾP vào hệ thống với tên gốc."
+        ]
+        
+        results.append({
+            "status": "danger",
+            "title": "❌ CẢNH BÁO: MÁY CHỦ BỊ XÂM NHẬP!",
+            "logs": trace_log,
+            "file_info": {
+                "name": filename,
+                "mime_type": file.mimetype,
+                "size": format_size(file_size), # Dùng hàm định dạng mới
+                "saved_as": filepath
+            }
+        })
+        
+    return jsonify({"results": results}), 200
 
 # ==========================================
-# 🛡️ LUỒNG 2: SECURE (Bản vá lỗi)
+# 🛡️ LUỒNG 2: SECURE (HỆ THỐNG VÁ LỖI)
 # ==========================================
 @app.route('/upload_secure', methods=['POST'])
 def upload_secure():
-    if 'file' not in request.files:
-        return jsonify({"title": "Lỗi", "msg": "Không tìm thấy file"}), 400
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"title": "Lỗi", "msg": "Chưa chọn file"}), 400
+    files = request.files.getlist('file')
+    if not files or files[0].filename == '':
+        return jsonify({"error": "Chưa chọn file nào!"}), 400
 
-    filename = file.filename
-    file_size = get_file_size(file)
-    
-    file_data = {
-        "name": filename,
-        "mime_type": file.mimetype,
-        "size": f"{file_size / 1024:.2f} KB"
-    }
+    results = []
+    for file in files:
+        if file.filename == '': continue
 
-    # BỘ QUÉT TÍCH LŨY ĐA LỖI
-    errors_found = []
+        filename = file.filename
+        file_size = get_file_size(file)
+        mime_type = file.mimetype
+        trace_log = []
+        is_safe = True
 
-    # Kiểm tra 1: Dung lượng
-    if file_size > MAX_FILE_SIZE:
-        errors_found.append(f"Vượt quá dung lượng an toàn (Kích thước: {file_size / (1024*1024):.2f} MB > 2.0 MB).")
+        trace_log.append(f"ℹ️ Bước 1: Tiếp nhận gói tin '{filename}'.")
 
-    # Kiểm tra 2: Đuôi file
-    if not allowed_file(filename):
-        errors_found.append("Sai định dạng đuôi file (Whitelist chỉ cấp phép: .jpg, .jpeg, .png).")
+        if file_size > MAX_FILE_SIZE:
+            trace_log.append("❌ Bước 2: KIỂM TRA DUNG LƯỢNG -> [THẤT BẠI] Vượt quá 2MB.")
+            is_safe = False
+        else:
+            trace_log.append("✅ Bước 2: KIỂM TRA DUNG LƯỢNG -> [HỢP LỆ].")
 
-    # Kiểm tra 3: Magic Bytes (Nội dung bên trong)
-    if not is_real_image(file):
-        errors_found.append("Cảnh báo giả mạo Header! Cấu trúc byte bên trong không phải là ảnh hợp lệ.")
+        if not allowed_file(filename):
+            trace_log.append("❌ Bước 3: KIỂM TRA ĐỊNH DẠNG -> [THẤT BẠI] Đuôi file bị cấm.")
+            is_safe = False
+        else:
+            trace_log.append("✅ Bước 3: KIỂM TRA ĐỊNH DẠNG -> [HỢP LỆ].")
 
-    # NẾU PHÁT HIỆN LỖI (Dù chỉ 1 lỗi) -> CHẶN NGAY
-    if errors_found:
-        return jsonify({
-            "status": "blocked",
-            "title": "🛡️ BỊ CHẶN: PHÁT HIỆN FILE KHÔNG HỢP LỆ!",
-            "msg": "Hệ thống từ chối lưu file này do vi phạm chính sách bảo mật.",
-            "reasons": errors_found,
-            "file_info": file_data
-        }), 403
+        if is_safe:
+            if not is_real_image(file):
+                trace_log.append("❌ Bước 4: QUÉT MAGIC BYTES -> [THẤT BẠI] Giả mạo Header.")
+                is_safe = False
+            else:
+                trace_log.append("✅ Bước 4: QUÉT MAGIC BYTES -> [HỢP LỆ] Cấu trúc chuẩn.")
+        else:
+            trace_log.append("⚠️ Bước 4: QUÉT MAGIC BYTES -> Bỏ qua do đã lỗi từ trước.")
 
-    # NẾU FILE AN TOÀN (Vượt qua 3 lớp trên) -> MÃ HÓA TÊN FILE VÀ LƯU
-    ext = filename.rsplit('.', 1)[1].lower()
-    safe_filename = f"{uuid.uuid4().hex}.{ext}"
-    filepath = os.path.join(UPLOAD_SECURE, safe_filename)
-    file.save(filepath)
-    
-    file_data["saved_as"] = safe_filename
+        if is_safe:
+            ext = filename.rsplit('.', 1)[1].lower()
+            safe_filename = f"{uuid.uuid4().hex}.{ext}"
+            filepath = os.path.join(UPLOAD_SECURE, safe_filename)
+            file.save(filepath)
+            
+            trace_log.append(f"✅ Bước 5: KHỬ ĐỘC TÊN FILE -> Đã lưu an toàn.")
+            
+            results.append({
+                "status": "success",
+                "title": "✅ TẢI LÊN THÀNH CÔNG & AN TOÀN",
+                "logs": trace_log,
+                "file_info": {
+                    "name": filename,
+                    "mime_type": mime_type,
+                    "size": format_size(file_size), # Dùng hàm định dạng mới
+                    "saved_as": safe_filename
+                }
+            })
+        else:
+            trace_log.append("🛡️ Bước 5: HỦY GÓI TIN -> Chặn đứng nỗ lực tấn công.")
+            results.append({
+                "status": "blocked",
+                "title": "🛡️ ĐÃ CHẶN ĐỨNG FILE ĐỘC HẠI",
+                "logs": trace_log,
+                "file_info": {
+                    "name": filename,
+                    "mime_type": mime_type,
+                    "size": format_size(file_size) # Dùng hàm định dạng mới
+                }
+            })
 
-    return jsonify({
-        "status": "success",
-        "title": "✅ TẢI LÊN AN TOÀN!",
-        "msg": "File hợp lệ đã được lưu trữ thành công.",
-        "reasons": ["Vượt qua toàn bộ 3 lớp kiểm tra bảo mật (Dung lượng, Whitelist, Magic Bytes)."],
-        "file_info": file_data
-    }), 200
+    return jsonify({"results": results}), 200
 
 def open_browser():
     webbrowser.open_new("http://localhost:5000/")

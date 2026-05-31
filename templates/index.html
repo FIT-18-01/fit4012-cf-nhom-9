@@ -5,16 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF10 - File Upload Vulnerability</title>
     <style>
-        /* CSS CƠ BẢN */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 0;
             background-color: #f4f7f6;
             color: #333;
         }
 
-        /* NAVBAR TÊN ĐỀ TÀI */
         .navbar {
             background-color: #12294A;
             color: white;
@@ -32,7 +29,6 @@
                 margin: 0;
                 font-size: 20px;
                 text-transform: uppercase;
-                letter-spacing: 1px;
             }
 
             .navbar span {
@@ -43,23 +39,21 @@
                 font-weight: bold;
             }
 
-        /* BỐ CỤC CHÍNH */
         .container {
-            max-width: 1200px;
+            max-width: 1300px;
             margin: 30px auto;
             padding: 0 20px;
         }
 
+        /* CỘT CHIA ĐÔI 50/50 */
         .upload-section {
-            display: flex;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 30px;
             margin-bottom: 30px;
-            flex-wrap: wrap;
         }
 
         .box {
-            flex: 1;
-            min-width: 300px;
             background: white;
             padding: 25px;
             border-radius: 12px;
@@ -74,21 +68,6 @@
             border-top: 6px solid #28a745;
         }
 
-        .box h3 {
-            margin-top: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .box p {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 20px;
-            line-height: 1.5;
-        }
-
-        /* LÀM ĐẸP NÚT FILE UPLOAD */
         .file-upload-wrapper {
             position: relative;
             margin-bottom: 15px;
@@ -97,7 +76,7 @@
         .file-upload-input {
             display: none;
         }
-        /* Ẩn nút chọn file xấu xí mặc định */
+
         .file-upload-label {
             display: block;
             padding: 15px;
@@ -116,7 +95,6 @@
                 border-color: #999;
             }
 
-        /* NÚT SUBMIT */
         .btn-submit {
             width: 100%;
             padding: 14px;
@@ -126,11 +104,7 @@
             font-weight: bold;
             color: white;
             cursor: pointer;
-            transition: 0.3s;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
+            transition: 0.2s;
         }
 
         .btn-vuln {
@@ -139,7 +113,6 @@
 
             .btn-vuln:hover {
                 background: #c82333;
-                box-shadow: 0 4px 8px rgba(220,53,69,0.3);
             }
 
         .btn-secure {
@@ -148,34 +121,79 @@
 
             .btn-secure:hover {
                 background: #218838;
-                box-shadow: 0 4px 8px rgba(40,167,69,0.3);
             }
 
-        /* HỘP KẾT QUẢ HIỂN THỊ ĐẸP (Thay thế iframe) */
-        .result-box {
+        /* KẾT QUẢ TỪNG FILE */
+        .result-container {
             margin-top: 20px;
+            display: none;
+        }
+
+        .file-result-card {
+            margin-bottom: 15px;
             padding: 15px;
             border-radius: 8px;
-            display: none;
+            border-left: 5px solid;
             font-size: 14px;
-            line-height: 1.6;
-            word-wrap: break-word;
-            font-weight: 500;
+            background: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.08);
         }
 
-        .result-success {
-            background-color: #d4edda;
-            color: #155724;
-            border-left: 5px solid #28a745;
+        .card-danger {
+            border-left-color: #dc3545;
+            background-color: #fcf0f1;
         }
 
-        .result-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border-left: 5px solid #dc3545;
+        .card-blocked {
+            border-left-color: #6c757d;
+            background-color: #f8f9fa;
         }
 
-        /* KHUNG TEST CASES & LOGS */
+        .card-success {
+            border-left-color: #28a745;
+            background-color: #f1fcf3;
+        }
+
+        /* LOG BƯỚC CHẠY BÊN TRONG CARD */
+        .step-log {
+            background: #1e1e1e;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 13px;
+            line-height: 1.8;
+            margin-top: 10px;
+            overflow-x: auto;
+        }
+
+        .step-danger {
+            color: #ff5252;
+            font-weight: bold;
+            background: rgba(255, 82, 82, 0.15);
+            padding-left: 5px;
+            border-radius: 3px;
+            display: block;
+        }
+
+        .step-warn {
+            color: #ffca28;
+            display: block;
+            padding-left: 5px;
+        }
+
+        .step-info {
+            color: #4fc3f7;
+            display: block;
+            padding-left: 5px;
+        }
+
+        .step-success {
+            color: #69f0ae;
+            display: block;
+            padding-left: 5px;
+        }
+
+        /* TERMINAL TỔNG GIÁM SÁT (GLOBAL LOGS) */
         .info-section {
             background: white;
             padding: 25px;
@@ -191,51 +209,41 @@
                 padding-bottom: 10px;
             }
 
-        .test-case-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-            font-size: 14px;
-        }
-
-            .test-case-table th, .test-case-table td {
-                padding: 12px;
-                border: 1px solid #ddd;
-                text-align: left;
-            }
-
-            .test-case-table th {
-                background: #f0f2f5;
-            }
-
-        /* GIAO DIỆN TERMINAL LOGS */
         .log-terminal {
-            background: #1e1e1e;
+            background: #0c0c0c;
             color: #00ff00;
             font-family: 'Courier New', Courier, monospace;
             padding: 15px;
             border-radius: 8px;
-            height: 200px;
+            height: 250px;
             overflow-y: auto;
             font-size: 13px;
-            line-height: 1.5;
+            line-height: 1.6;
+            border: 1px solid #333;
         }
 
-        .log-time {
+        .sys-time {
             color: #888;
             margin-right: 10px;
         }
 
-        .log-info {
+        .sys-info {
             color: #4fc3f7;
         }
 
-        .log-danger {
+        .sys-danger {
             color: #ff5252;
+            font-weight: bold;
         }
 
-        .log-success {
+        .sys-success {
             color: #69f0ae;
+            font-weight: bold;
+        }
+
+        .sys-warn {
+            color: #ffca28;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -247,216 +255,176 @@
     </nav>
 
     <div class="container">
+
         <div class="upload-section">
 
             <div class="box vuln-box">
-                <h3 style="color: #dc3545;">🚨 Hệ thống Lỗi (Vulnerable)</h3>
-                <p>Mô phỏng máy chủ không kiểm tra kích thước, định dạng, nội dung hay tên file. Rất dễ bị Hacker khai thác up Shell.</p>
-
+                <h3 style="color: #dc3545; margin-top: 0;">🚨 Máy Chủ Lỗi (Vulnerable)</h3>
+                <p style="color: #666; font-size: 14px;">Hệ thống không kiểm tra Input. Có thể chọn nhiều file.</p>
                 <form id="form-vuln">
                     <div class="file-upload-wrapper">
-                        <label for="file-vuln" id="label-vuln" class="file-upload-label">📁 Bấm vào đây để chọn File...</label>
-                        <input type="file" id="file-vuln" name="file" class="file-upload-input" onchange="updateFileName(this, 'label-vuln')" required>
+                        <label for="file-vuln" id="label-vuln" class="file-upload-label">📁 Bấm vào đây để chọn nhiều File...</label>
+                        <input type="file" id="file-vuln" name="file" class="file-upload-input" onchange="updateFileName(this, 'label-vuln')" multiple required>
                     </div>
-                    <button type="button" class="btn-submit btn-vuln" onclick="submitFile('form-vuln', '/upload_vuln', 'result-vuln', 'vuln')">
-                        🚀 Gửi lên Server (Lỗi)
+                    <button type="button" class="btn-submit btn-vuln" onclick="submitFiles('form-vuln', '/upload_vuln', 'result-vuln', 'vuln')">
+                        🚀 Gửi lên Server Lỗi
                     </button>
                 </form>
-
-                <div id="result-vuln" class="result-box"></div>
+                <div id="result-vuln" class="result-container"></div>
             </div>
 
             <div class="box secure-box">
-                <h3 style="color: #28a745;">🛡️ Hệ thống Vá Lỗi (Secure)</h3>
-                <p>Phòng thủ đa lớp: Giới hạn 2MB, Whitelist đuôi ảnh, kiểm tra chữ ký Byte (MIME) và sinh mã tên file ngẫu nhiên.</p>
-
+                <h3 style="color: #28a745; margin-top: 0;">🛡️ Máy Chủ Vá Lỗi (Secure)</h3>
+                <p style="color: #666; font-size: 14px;">Hệ thống áp dụng Defense in Depth. Sẽ quét từng bước.</p>
                 <form id="form-secure">
                     <div class="file-upload-wrapper">
-                        <label for="file-secure" id="label-secure" class="file-upload-label">📁 Bấm vào đây để chọn File...</label>
-                        <input type="file" id="file-secure" name="file" class="file-upload-input" onchange="updateFileName(this, 'label-secure')" required>
+                        <label for="file-secure" id="label-secure" class="file-upload-label">📁 Bấm vào đây để chọn nhiều File...</label>
+                        <input type="file" id="file-secure" name="file" class="file-upload-input" onchange="updateFileName(this, 'label-secure')" multiple required>
                     </div>
-                    <button type="button" class="btn-submit btn-secure" onclick="submitFile('form-secure', '/upload_secure', 'result-secure', 'secure')">
-                        🔒 Gửi lên Server (An Toàn)
+                    <button type="button" class="btn-submit btn-secure" onclick="submitFiles('form-secure', '/upload_secure', 'result-secure', 'secure')">
+                        🔒 Gửi lên Server Bảo Mật
                     </button>
                 </form>
-
-                <div id="result-secure" class="result-box"></div>
+                <div id="result-secure" class="result-container"></div>
             </div>
 
         </div>
 
         <div class="info-section">
-            <h3>📌 Danh sách Test Case Yêu Cầu Demo</h3>
-            <table class="test-case-table">
-                <tr>
-                    <th width="12%">Mã Test</th>
-                    <th width="38%">Kịch bản kiểm thử (Input)</th>
-                    <th width="25%">Bên Hệ thống Lỗi (Vuln)</th>
-                    <th width="25%">Bên Hệ thống Vá (Secure)</th>
-                </tr>
-                <tr>
-                    <td><b>TC-01: Ảnh hợp lệ</b></td>
-                    <td>Upload file ảnh <code>.jpg</code> bình thường, dung lượng nhẹ.</td>
-                    <td><span style="color:red">Nhận (Lưu tên gốc)</span></td>
-                    <td><span style="color:green">Nhận (Đổi tên ngẫu nhiên UUID)</span></td>
-                </tr>
-                <tr>
-                    <td><b>TC-02: Giả mạo đuôi</b></td>
-                    <td>Đổi file mã độc <code>shell.php</code> thành <code>anh.jpg</code> để lừa hệ thống.</td>
-                    <td><span style="color:red">Nhận file Shell</span></td>
-                    <td><span style="color:green">Chặn (Phát hiện Header sai)</span></td>
-                </tr>
-                <tr>
-                    <td><b>TC-03: Tấn công DoS</b></td>
-                    <td>Upload file rác dung lượng khổng lồ (> 2MB).</td>
-                    <td><span style="color:red">Nhận (Gây đầy ổ đĩa)</span></td>
-                    <td><span style="color:green">Chặn (Vượt dung lượng)</span></td>
-                </tr>
-                <tr>
-                    <td><b>TC-04: Sai định dạng</b></td>
-                    <td>Ngang nhiên upload file không phải ảnh (VD: <code>trojan.exe</code>, <code>.txt</code>).</td>
-                    <td><span style="color:red">Nhận (Chứa chấp mã độc)</span></td>
-                    <td><span style="color:green">Chặn (Bởi lớp Whitelist)</span></td>
-                </tr>
-                <tr>
-                    <td><b>TC-05: Đa đuôi file</b></td>
-                    <td>Up file <code>shell.php.jpg</code> để lừa bộ lọc Whitelist kém.</td>
-                    <td><span style="color:red">Nhận file Shell</span></td>
-                    <td><span style="color:green">Chặn (Bởi lớp đọc Header ảnh)</span></td>
-                </tr>
-                <tr>
-                    <td><b>TC-06: File vô danh</b></td>
-                    <td>Up file không có đuôi mở rộng (không có dấu chấm).</td>
-                    <td><span style="color:red">Nhận file rác</span></td>
-                    <td><span style="color:green">Chặn (Sai định dạng chuẩn)</span></td>
-                </tr>
-            </table>
-        </div>
-
-        <div class="info-section">
-            <h3>⚙️ Terminal Logs - Hoạt động hệ thống</h3>
-            <div class="log-terminal" id="sys-logs">
-                <span class="log-time">[System]</span> Bắt đầu phiên làm việc - Cyber Fortress CF10 Ready.<br>
+            <h3>⚙️ Terminal Monitor - Giám sát truy cập toàn cục</h3>
+            <div class="log-terminal" id="global-logs">
+                <span class="sys-time">[System]</span> Khởi động hệ thống. SOC Dashboard Ready.<br>
             </div>
         </div>
 
     </div>
 
     <script>
-        // 1. Hàm làm đẹp nút chọn file (Hiện tên file khi chọn)
+        // 1. Hàm cập nhật nhãn chọn file
         function updateFileName(input, labelId) {
             const label = document.getElementById(labelId);
-            if (input.files.length > 0) {
-                label.innerHTML = "📄 Đã chọn: <b>" + input.files[0].name + "</b>";
-                label.style.borderColor = "#0084ff";
-                label.style.backgroundColor = "#e7f1ff";
-                label.style.color = "#0056b3";
+            if (input.files.length === 1) {
+                label.innerHTML = "📄 Đã chọn: <b style='color:#0056b3;'>" + input.files[0].name + "</b>";
+            } else if (input.files.length > 1) {
+                label.innerHTML = "📚 Đã chọn: <b style='color:#0056b3;'>" + input.files.length + " files</b>";
             } else {
-                label.innerHTML = "📁 Bấm vào đây để chọn File...";
-                label.style.borderColor = "#ccc";
-                label.style.backgroundColor = "#f8f9fa";
-                label.style.color = "#555";
+                label.innerHTML = "📁 Bấm vào đây để chọn nhiều File...";
             }
         }
 
-        // 2. Hàm ghi Log vào Terminal
-        function writeLog(message, type) {
-            const logBox = document.getElementById('sys-logs');
+        // 2. Hàm ghi log toàn cục xuống khung đen Terminal Monitor
+        function writeGlobalLog(message, type = "info") {
+            const logBox = document.getElementById('global-logs');
             const time = new Date().toLocaleTimeString();
-            let colorClass = "log-info";
-            if (type === "error") colorClass = "log-danger";
-            if (type === "success") colorClass = "log-success";
+            let colorClass = "sys-info";
 
-            logBox.innerHTML += `<span class="log-time">[${time}]</span> <span class="${colorClass}">${message}</span><br>`;
-            logBox.scrollTop = logBox.scrollHeight; // Tự động cuộn xuống cuối
+            if (type === "error") colorClass = "sys-danger";
+            if (type === "success") colorClass = "sys-success";
+            if (type === "warn") colorClass = "sys-warn";
+
+            logBox.innerHTML += `<span class="sys-time">[${time}]</span> <span class="${colorClass}">${message}</span><br>`;
+            logBox.scrollTop = logBox.scrollHeight;
         }
 
-        // 3. Hàm gửi File bằng Fetch API và bóc tách dữ liệu JSON báo cáo chi tiết
-        async function submitFile(formId, url, resultId, sysType) {
+        // 3. Hàm xử lý gửi file và vẽ báo cáo
+        async function submitFiles(formId, url, resultId, sysType) {
             const form = document.getElementById(formId);
-            const fileInput = form.querySelector('input[type="file"]');
             const resultBox = document.getElementById(resultId);
+            const fileInput = form.querySelector('input[type="file"]');
 
-            if (!fileInput.files[0]) {
+            if (fileInput.files.length === 0) {
                 alert("⚠️ Bạn chưa chọn file nào!");
                 return;
             }
 
-            const fileName = fileInput.files[0].name;
-            const fileSize = (fileInput.files[0].size / 1024).toFixed(2);
+            const totalFiles = fileInput.files.length;
+            const targetName = sysType === 'vuln' ? 'MÁY CHỦ LỖI' : 'MÁY CHỦ BẢO MẠT';
 
-            writeLog(`Đang gửi yêu cầu POST file [${fileName}] tới endpoint: ${url}`, "info");
+            writeGlobalLog(`=========================================`);
+            writeGlobalLog(`Đang gửi lô ${totalFiles} file(s) tới [${targetName}]...`, "info");
 
-            // Hiện trạng thái đang xử lý
             resultBox.style.display = 'block';
-            resultBox.className = 'result-box';
-            resultBox.style.backgroundColor = '#e9ecef';
-            resultBox.style.color = '#333';
-            resultBox.innerHTML = '⏳ Đang phân tích gói tin...';
-
-            const formData = new FormData(form);
+            resultBox.innerHTML = '<div style="text-align:center; padding: 15px; background: #e9ecef; border-radius: 8px;">⏳ Đang phân tích các gói tin...</div>';
 
             try {
-                const response = await fetch(url, { method: 'POST', body: formData });
+                const response = await fetch(url, { method: 'POST', body: new FormData(form) });
                 const data = await response.json();
 
-                // Cài đặt màu sắc theo Status
-                let titleColor = "#333";
-                if (data.status === "danger") {
-                    resultBox.className = 'result-box result-error'; // Đỏ (Bị hack)
-                    titleColor = "#721c24";
-                    writeLog(`[CẢNH BÁO] Hacker đã lọt vào máy chủ!`, "error");
-                } else if (data.status === "blocked") {
-                    resultBox.className = 'result-box result-success'; // Xanh (Chặn thành công)
-                    titleColor = "#155724";
-                    writeLog(`[PHÒNG THỦ THÀNH CÔNG] File độc hại bị chặn đứng.`, "success");
-                } else {
-                    resultBox.className = 'result-box result-success'; // Xanh (Up ảnh an toàn)
-                    titleColor = "#155724";
-                    writeLog(`[AN TOÀN] File được tải lên và khử độc tên file thành công.`, "success");
+                if (data.error) {
+                    resultBox.innerHTML = `<div class="file-result-card card-danger">❌ ${data.error}</div>`;
+                    writeGlobalLog(`Lỗi từ client: ${data.error}`, "error");
+                    return;
                 }
 
-                // TẠO DANH SÁCH LỖI (1, 2, 3...)
-                let reasonsHtml = '';
-                if (data.reasons && data.reasons.length > 0) {
-                    let textTitle = data.status === "success" ? "🛡️ Chi tiết phòng thủ:" : "🚨 Các vấn đề / lỗi phát hiện:";
-                    let textColor = data.status === "success" ? "#155724" : "#d32f2f";
+                let htmlContent = '';
 
-                    reasonsHtml = `<div style="color: ${textColor}; margin-bottom: 12px; font-size: 14px;"><b>${textTitle}</b><br>`;
-                    data.reasons.forEach((r, index) => {
-                        reasonsHtml += `<span style="margin-left: 10px;"><b>${index + 1}.</b> ${r}</span><br>`;
+                data.results.forEach(res => {
+                    let cardClass = res.status === 'danger' ? 'card-danger' : (res.status === 'blocked' ? 'card-blocked' : 'card-success');
+                    let titleColor = res.status === 'danger' ? '#dc3545' : (res.status === 'blocked' ? '#6c757d' : '#28a745');
+
+                    // SỬA LỖI UNDEFINED Ở TERMINAL MONITOR
+                    // Lấy tên file chuẩn xác từ cục file_info do Python trả về
+                    let fileName = res.file_info ? res.file_info.name : "File không xác định";
+
+                    // GHI LOG TERMINAL TỔNG GIÁM SÁT DƯỚI ĐÁY
+                    if (res.status === 'danger') {
+                        writeGlobalLog(`[CẢNH BÁO] File '${fileName}' đã vượt tường lửa thành công!`, "error");
+                    } else if (res.status === 'blocked') {
+                        writeGlobalLog(`[CHẶN] Hệ thống đã tiêu diệt gói tin độc hại '${fileName}'.`, "warn");
+                    } else {
+                        writeGlobalLog(`[HỢP LỆ] Đã tải lên và mã hóa tên file '${fileName}' an toàn.`, "success");
+                    }
+
+                    // TÔ MÀU BƯỚC CHẠY BÊN TRONG HỘP KẾT QUẢ
+                    let stepsHtml = '';
+                    res.logs.forEach(log => {
+                        let spanClass = 'step-success';
+                        if (log.includes('❌') || log.includes('🚨')) spanClass = 'step-danger';
+                        else if (log.includes('⚠️')) spanClass = 'step-warn';
+                        else if (log.includes('ℹ️')) spanClass = 'step-info';
+
+                        stepsHtml += `<div class="${spanClass}">${log}</div>`;
                     });
-                    reasonsHtml += `</div>`;
-                }
 
-                // TẠO THÔNG TIN FILE BÊN DƯỚI
-                let fileInfoHtml = '';
-                if (data.file_info) {
-                    fileInfoHtml = `
-                        <div style="background: rgba(255,255,255,0.7); padding: 12px; border-radius: 6px; font-size: 13.5px; border: 1px dashed #aaa; box-shadow: inset 0 0 5px rgba(0,0,0,0.05);">
-                            <b style="color: #333; display: inline-block; margin-bottom: 8px;">📁 Thông tin File của bạn:</b>
-                            <ul style="margin: 0; padding-left: 20px; color: #444; list-style-type: square; line-height: 1.8;">
-                                <li><b>Tên file:</b> <code>${data.file_info.name}</code></li>
-                                <li><b>MIME Type:</b> <code>${data.file_info.mime_type}</code></li>
-                                <li><b>Kích thước:</b> <code>${data.file_info.size}</code></li>
-                                ${data.file_info.saved_as ? `<li><b>Lưu trên Server:</b> <code style="color:#d32f2f;">${data.file_info.saved_as}</code></li>` : `<li><b>Trạng thái hệ thống:</b> <span style="color:#d32f2f; font-weight:bold;">Đã hủy gói tin, chặn lưu trữ</span></li>`}
-                            </ul>
-                        </div>
-                    `;
-                }
+                    // VẼ BẢNG CHI TIẾT FILE
+                    let fileInfoHtml = '';
+                    if (res.file_info) {
+                        fileInfoHtml = `
+                                <div style="background: rgba(255,255,255,0.7); padding: 12px; border-radius: 6px; font-size: 13.5px; border: 1px dashed #aaa; box-shadow: inset 0 0 5px rgba(0,0,0,0.05); margin-top: 15px;">
+                                    <b style="color: #333; display: inline-block; margin-bottom: 5px;">📁 Chi tiết gói tin Input:</b>
+                                    <ul style="margin: 0; padding-left: 20px; color: #444; list-style-type: square; line-height: 1.7;">
+                                        <li><b>Tên file gửi lên:</b> <code>${res.file_info.name}</code></li>
+                                        <li><b>Nhãn MIME Type:</b> <code>${res.file_info.mime_type}</code></li>
+                                        <li><b>Kích thước thực:</b> <code>${res.file_info.size}</code></li>
+                                        ${res.file_info.saved_as ? `<li><b>Lưu trên Server:</b> <code style="color:#d32f2f;">${res.file_info.saved_as}</code></li>` : `<li><b>Trạng thái Database:</b> <span style="color:#d32f2f; font-weight:bold;">Đã hủy gói tin, chặn lưu trữ</span></li>`}
+                                    </ul>
+                                </div>
+                            `;
+                    }
 
-                // Ghép nối HTML
-                resultBox.innerHTML = `
-                    <div style="font-size: 16px; margin-bottom: 5px; color: ${titleColor};"><b>${data.title}</b></div>
-                    <div style="margin-bottom: 15px; font-weight: normal;">${data.msg}</div>
-                    ${reasonsHtml}
-                    ${fileInfoHtml}
-                `;
+                    // GHÉP VÀO
+                    htmlContent += `
+                            <div class="file-result-card ${cardClass}">
+                                <div style="font-weight: bold; color: ${titleColor}; margin-bottom: 12px; font-size: 15.5px; border-bottom: 1px solid #ddd; padding-bottom: 8px;">
+                                    ${res.title}
+                                </div>
+
+                                <b style="font-size: 13.5px; color: #555;">🔍 Nhật ký rà quét hệ thống (Trace Logs):</b>
+                                <div class="step-log">
+                                    ${stepsHtml}
+                                </div>
+
+                                ${fileInfoHtml}
+                            </div>
+                        `;
+                });
+
+                resultBox.innerHTML = htmlContent;
+                writeGlobalLog(`Hoàn tất phân tích lô file.`, "info");
 
             } catch (error) {
-                resultBox.className = 'result-box result-error';
-                resultBox.innerHTML = "❌ Lỗi mạng: Không thể đọc được phản hồi từ Server.";
-                writeLog(`[LỖI HỆ THỐNG] ${error.message}`, "error");
+                resultBox.innerHTML = `<div class="file-result-card card-danger">❌ Lỗi kết nối Server. (Chưa bật app.py)</div>`;
+                writeGlobalLog(`Lỗi mất kết nối tới Backend!`, "error");
             }
         }
     </script>
